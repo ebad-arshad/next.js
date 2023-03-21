@@ -13,8 +13,8 @@ use turbo_binding::turbopack::ecmascript::EcmascriptInputTransform;
 use turbo_binding::turbopack::node::execution_context::ExecutionContextVc;
 use turbo_binding::turbopack::turbopack::{
     module_options::{
-        JsxTransformOptions, JsxTransformOptionsVc, ModuleOptionsContext, ModuleOptionsContextVc,
-        PostCssTransformOptions, WebpackLoadersOptions,
+        ModuleOptionsContext, ModuleOptionsContextVc, PostCssTransformOptions,
+        WebpackLoadersOptions,
     },
     resolve_options_context::{ResolveOptionsContext, ResolveOptionsContextVc},
 };
@@ -28,7 +28,10 @@ use crate::{
     next_build::{get_external_next_compiled_package_mapping, get_postcss_package_mapping},
     next_config::NextConfigVc,
     next_import_map::get_next_server_import_map,
-    typescript::get_typescript_transform_options,
+    transform_options::{
+        get_decorators_transform_options, get_jsx_transform_options,
+        get_typescript_transform_options,
+    },
     util::foreign_code_context_condition,
 };
 
@@ -226,6 +229,8 @@ pub async fn get_server_module_options_context(
     };
 
     let tsconfig = get_typescript_transform_options(project_path);
+    let decorators_options = get_decorators_transform_options(project_path);
+    let jsx_runtime_options = get_jsx_transform_options(project_path);
 
     let module_options_context = match ty.into_value() {
         ServerContextType::Pages { .. } | ServerContextType::PagesData { .. } => {
@@ -234,11 +239,12 @@ pub async fn get_server_module_options_context(
                 ..Default::default()
             };
             ModuleOptionsContext {
-                enable_jsx: Some(get_jsx_transform_options()),
+                enable_jsx: Some(jsx_runtime_options),
                 enable_styled_jsx: true,
                 enable_postcss_transform,
                 enable_webpack_loaders,
                 enable_typescript_transform: Some(tsconfig),
+                decorators: Some(decorators_options),
                 rules: vec![(
                     foreign_code_context_condition,
                     module_options_context.clone().cell(),
@@ -253,11 +259,12 @@ pub async fn get_server_module_options_context(
                 ..Default::default()
             };
             ModuleOptionsContext {
-                enable_jsx: Some(get_jsx_transform_options()),
+                enable_jsx: Some(jsx_runtime_options),
                 enable_styled_jsx: true,
                 enable_postcss_transform,
                 enable_webpack_loaders,
                 enable_typescript_transform: Some(tsconfig),
+                decorators: Some(decorators_options),
                 rules: vec![(
                     foreign_code_context_condition,
                     module_options_context.clone().cell(),
@@ -275,10 +282,11 @@ pub async fn get_server_module_options_context(
                 ..Default::default()
             };
             ModuleOptionsContext {
-                enable_jsx: Some(get_jsx_transform_options()),
+                enable_jsx: Some(jsx_runtime_options),
                 enable_postcss_transform,
                 enable_webpack_loaders,
                 enable_typescript_transform: Some(tsconfig),
+                decorators: Some(decorators_options),
                 rules: vec![(
                     foreign_code_context_condition,
                     module_options_context.clone().cell(),
@@ -296,6 +304,7 @@ pub async fn get_server_module_options_context(
                 enable_postcss_transform,
                 enable_webpack_loaders,
                 enable_typescript_transform: Some(tsconfig),
+                decorators: Some(decorators_options),
                 rules: vec![(
                     foreign_code_context_condition,
                     module_options_context.clone().cell(),
@@ -310,11 +319,12 @@ pub async fn get_server_module_options_context(
                 ..Default::default()
             };
             ModuleOptionsContext {
-                enable_jsx: Some(get_jsx_transform_options()),
+                enable_jsx: Some(jsx_runtime_options),
                 enable_styled_jsx: true,
                 enable_postcss_transform,
                 enable_webpack_loaders,
                 enable_typescript_transform: Some(tsconfig),
+                decorators: Some(decorators_options),
                 rules: vec![(
                     foreign_code_context_condition,
                     module_options_context.clone().cell(),
@@ -327,15 +337,6 @@ pub async fn get_server_module_options_context(
     .cell();
 
     Ok(module_options_context)
-}
-
-#[turbo_tasks::function]
-pub fn get_jsx_transform_options() -> JsxTransformOptionsVc {
-    JsxTransformOptions {
-        import_source: None,
-        runtime: None,
-    }
-    .cell()
 }
 
 #[turbo_tasks::function]

@@ -22,7 +22,7 @@ use turbo_binding::turbopack::node::execution_context::ExecutionContextVc;
 use turbo_binding::turbopack::turbopack::{
     module_options::{
         module_options_context::{ModuleOptionsContext, ModuleOptionsContextVc},
-        JsxTransformOptions, PostCssTransformOptions, WebpackLoadersOptions,
+        PostCssTransformOptions, WebpackLoadersOptions,
     },
     resolve_options_context::{ResolveOptionsContext, ResolveOptionsContextVc},
     transition::TransitionsByNameVc,
@@ -43,7 +43,10 @@ use crate::{
         get_next_client_resolved_map,
     },
     react_refresh::assert_can_resolve_react_refresh,
-    typescript::get_typescript_transform_options,
+    transform_options::{
+        get_decorators_transform_options, get_jsx_transform_options,
+        get_typescript_transform_options,
+    },
     util::foreign_code_context_condition,
 };
 
@@ -145,6 +148,8 @@ pub async fn get_client_module_options_context(
             .is_found();
 
     let tsconfig = get_typescript_transform_options(project_path);
+    let decorators_options = get_decorators_transform_options(project_path);
+    let jsx_runtime_options = get_jsx_transform_options(project_path);
     let enable_webpack_loaders = {
         let options = &*next_config.webpack_loaders_options().await?;
         let loaders_options = WebpackLoadersOptions {
@@ -171,13 +176,7 @@ pub async fn get_client_module_options_context(
         // We don't need to resolve React Refresh for each module. Instead,
         // we try resolve it once at the root and pass down a context to all
         // the modules.
-        enable_jsx: Some(
-            JsxTransformOptions {
-                import_source: None,
-                runtime: None,
-            }
-            .cell(),
-        ),
+        enable_jsx: Some(jsx_runtime_options),
         enable_emotion: true,
         enable_react_refresh,
         enable_styled_components: true,
@@ -188,6 +187,7 @@ pub async fn get_client_module_options_context(
         }),
         enable_webpack_loaders,
         enable_typescript_transform: Some(tsconfig),
+        decorators: Some(decorators_options),
         rules: vec![(
             foreign_code_context_condition(next_config).await?,
             module_options_context.clone().cell(),
