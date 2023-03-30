@@ -4,7 +4,7 @@ use turbo_binding::turbo::tasks_fs::FileSystemPathVc;
 use turbo_binding::turbopack::core::{
     asset::{Asset, AssetContentVc, AssetVc},
     chunk::{
-        availability_info::AvailabilityInfo, Chunk, ChunkGroupVc, ChunkItem, ChunkItemVc, ChunkVc,
+        availability_info::AvailabilityInfo, ChunkGroupVc, ChunkItem, ChunkItemVc, ChunkVc,
         ChunkableAsset, ChunkableAssetReference, ChunkableAssetReferenceVc, ChunkableAssetVc,
         ChunkingContext, ChunkingContextVc, ChunkingType, ChunkingTypeOptionVc,
     },
@@ -134,7 +134,7 @@ impl EcmascriptChunkItem for WithClientChunksChunkItem {
                 }
             }
 
-            asset_paths.push(chunk.path().await?);
+            asset_paths.push(chunk.ident().path().await?);
         }
 
         let mut client_chunks = Vec::new();

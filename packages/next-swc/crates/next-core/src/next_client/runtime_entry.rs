@@ -2,30 +2,25 @@ use anyhow::{bail, Result};
 use turbo_binding::turbo::tasks_fs::FileSystemPathVc;
 use turbo_binding::turbopack::core::{
     asset::Asset,
+    chunk::{EvaluatedEntriesVc, EvaluatedEntryVc},
     context::AssetContextVc,
     resolve::{origin::PlainResolveOriginVc, parse::RequestVc},
 };
-use turbo_binding::turbopack::ecmascript::{
-    chunk::{EcmascriptChunkPlaceableVc, EcmascriptChunkPlaceablesVc},
-    resolve::cjs_resolve,
-};
+use turbo_binding::turbopack::ecmascript::resolve::cjs_resolve;
 use turbo_tasks::ValueToString;
 
 #[turbo_tasks::value(shared)]
 pub enum RuntimeEntry {
     Request(RequestVc, FileSystemPathVc),
-    Ecmascript(EcmascriptChunkPlaceableVc),
+    Evaluated(EvaluatedEntryVc),
 }
 
 #[turbo_tasks::value_impl]
 impl RuntimeEntryVc {
     #[turbo_tasks::function]
-    pub async fn resolve_entry(
-        self,
-        context: AssetContextVc,
-    ) -> Result<EcmascriptChunkPlaceablesVc> {
+    pub async fn resolve_entry(self, context: AssetContextVc) -> Result<EvaluatedEntriesVc> {
         let (request, path) = match *self.await? {
-            RuntimeEntry::Ecmascript(e) => return Ok(EcmascriptChunkPlaceablesVc::cell(vec![e])),
+            RuntimeEntry::Evaluated(e) => return Ok(EvaluatedEntriesVc::cell(vec![e])),
             RuntimeEntry::Request(r, path) => (r, path),
         };
 
@@ -35,18 +30,17 @@ impl RuntimeEntryVc {
 
         let mut runtime_entries = Vec::with_capacity(assets.len());
         for asset in &assets {
-            if let Some(placeable) = EcmascriptChunkPlaceableVc::resolve_from(asset).await? {
-                runtime_entries.push(placeable);
+            if let Some(entry) = EvaluatedEntryVc::resolve_from(asset).await? {
+                runtime_entries.push(entry);
             } else {
                 bail!(
-                    "runtime reference resolved to an asset ({}) that is not placeable into an \
-                     ecmascript chunk",
+                    "runtime reference resolved to an asset ({}) that cannot be evaluated",
                     asset.ident().to_string().await?
                 );
             }
         }
 
-        Ok(EcmascriptChunkPlaceablesVc::cell(runtime_entries))
+        Ok(EvaluatedEntriesVc::cell(runtime_entries))
     }
 }
 
@@ -56,10 +50,7 @@ pub struct RuntimeEntries(Vec<RuntimeEntryVc>);
 #[turbo_tasks::value_impl]
 impl RuntimeEntriesVc {
     #[turbo_tasks::function]
-    pub async fn resolve_entries(
-        self,
-        context: AssetContextVc,
-    ) -> Result<EcmascriptChunkPlaceablesVc> {
+    pub async fn resolve_entries(self, context: AssetContextVc) -> Result<EvaluatedEntriesVc> {
         let mut runtime_entries = Vec::new();
 
         for reference in &self.await? {
@@ -67,6 +58,6 @@ impl RuntimeEntriesVc {
             runtime_entries.extend(resolved_entries.into_iter());
         }
 
-        Ok(EcmascriptChunkPlaceablesVc::cell(runtime_entries))
+        Ok(EvaluatedEntriesVc::cell(runtime_entries))
     }
 }

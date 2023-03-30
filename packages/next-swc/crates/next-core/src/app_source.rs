@@ -12,6 +12,7 @@ use turbo_binding::turbo::tasks::{
 use turbo_binding::turbo::tasks_env::{CustomProcessEnvVc, EnvMapVc, ProcessEnvVc};
 use turbo_binding::turbo::tasks_fs::{rope::RopeBuilder, File, FileContent, FileSystemPathVc};
 use turbo_binding::turbopack::core::{
+    chunk::EvaluatedEntriesVc,
     compile_time_info::CompileTimeInfoVc,
     context::{AssetContext, AssetContextVc},
     environment::{EnvironmentIntention, ServerAddrVc},
@@ -27,8 +28,8 @@ use turbo_binding::turbopack::dev_server::{
     },
 };
 use turbo_binding::turbopack::ecmascript::{
-    chunk::EcmascriptChunkPlaceablesVc, magic_identifier, utils::StringifyJs,
-    EcmascriptInputTransformsVc, EcmascriptModuleAssetType, EcmascriptModuleAssetVc, InnerAssetsVc,
+    magic_identifier, utils::StringifyJs, EcmascriptInputTransformsVc, EcmascriptModuleAssetType,
+    EcmascriptModuleAssetVc, InnerAssetsVc,
 };
 use turbo_binding::turbopack::env::ProcessEnvAssetVc;
 use turbo_binding::turbopack::node::{
@@ -360,7 +361,7 @@ pub async fn create_app_source(
     let env = CustomProcessEnvVc::new(env, next_config.env()).as_process_env();
 
     let server_runtime_entries =
-        vec![ProcessEnvAssetVc::new(project_path, injected_env).as_ecmascript_chunk_placeable()];
+        vec![ProcessEnvAssetVc::new(project_path, injected_env).as_evaluated_entry()];
 
     let fallback_page = get_fallback_page(
         project_path,
@@ -378,7 +379,7 @@ pub async fn create_app_source(
         project_path,
         env,
         server_root,
-        EcmascriptChunkPlaceablesVc::cell(server_runtime_entries),
+        EvaluatedEntriesVc::cell(server_runtime_entries),
         fallback_page,
         output_path,
     );
@@ -394,7 +395,7 @@ async fn create_app_source_for_directory(
     project_path: FileSystemPathVc,
     env: ProcessEnvVc,
     server_root: FileSystemPathVc,
-    runtime_entries: EcmascriptChunkPlaceablesVc,
+    runtime_entries: EvaluatedEntriesVc,
     fallback_page: DevHtmlAssetVc,
     intermediate_output_path_root: FileSystemPathVc,
 ) -> Result<ContentSourceVc> {

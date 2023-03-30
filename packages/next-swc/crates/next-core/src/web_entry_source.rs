@@ -2,7 +2,7 @@ use anyhow::{anyhow, Result};
 use turbo_binding::turbo::tasks_env::ProcessEnvVc;
 use turbo_binding::turbo::tasks_fs::FileSystemPathVc;
 use turbo_binding::turbopack::core::{
-    chunk::{availability_info::AvailabilityInfo, ChunkGroupVc, ChunkableAsset, ChunkableAssetVc},
+    chunk::{ChunkGroupVc, ChunkableAsset, ChunkableAssetVc, EvaluatedEntriesVc},
     reference_type::{EntryReferenceSubType, ReferenceType},
     resolve::{origin::PlainResolveOriginVc, parse::RequestVc},
 };
@@ -73,19 +73,23 @@ pub async fn create_web_entry_source(
         .enumerate()
         .map(|(i, module)| async move {
             if let Some(ecmascript) = EcmascriptModuleAssetVc::resolve_from(module).await? {
-                let chunk = ecmascript
-                    .as_evaluated_chunk(chunking_context, (i == 0).then_some(runtime_entries));
-                let chunk_group = ChunkGroupVc::from_chunk(chunk);
+                let chunk_group = ChunkGroupVc::evaluated(
+                    chunking_context,
+                    ecmascript.into(),
+                    if i == 0 {
+                        runtime_entries
+                    } else {
+                        EvaluatedEntriesVc::empty()
+                    },
+                );
                 Ok(chunk_group)
             } else if let Some(chunkable) = ChunkableAssetVc::resolve_from(module).await? {
                 // TODO this is missing runtime code, so it's probably broken and we should also
                 // add an ecmascript chunk with the runtime code
-                Ok(ChunkGroupVc::from_chunk(chunkable.as_chunk(
+                Ok(ChunkGroupVc::from_chunk(
                     chunking_context,
-                    Value::new(AvailabilityInfo::Root {
-                        current_availability_root: module,
-                    }),
-                )))
+                    chunkable.as_root_chunk(chunking_context),
+                ))
             } else {
                 // TODO convert into a serve-able asset
                 Err(anyhow!(

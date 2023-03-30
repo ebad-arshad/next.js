@@ -5,7 +5,7 @@ use turbo_binding::turbo::tasks_env::{CustomProcessEnvVc, EnvMapVc, ProcessEnvVc
 use turbo_binding::turbo::tasks_fs::{FileContent, FileSystemPathVc};
 use turbo_binding::turbopack::core::{
     asset::AssetVc,
-    chunk::ChunkingContextVc,
+    chunk::{ChunkingContextVc, EvaluatedEntriesVc},
     context::{AssetContext, AssetContextVc},
     environment::{EnvironmentIntention, ServerAddrVc},
     reference_type::{EntryReferenceSubType, ReferenceType},
@@ -22,8 +22,8 @@ use turbo_binding::turbopack::dev_server::{
     },
 };
 use turbo_binding::turbopack::ecmascript::{
-    chunk::EcmascriptChunkPlaceablesVc, EcmascriptInputTransform, EcmascriptInputTransformsVc,
-    EcmascriptModuleAssetType, EcmascriptModuleAssetVc, InnerAssetsVc,
+    EcmascriptInputTransform, EcmascriptInputTransformsVc, EcmascriptModuleAssetType,
+    EcmascriptModuleAssetVc, InnerAssetsVc,
 };
 use turbo_binding::turbopack::env::ProcessEnvAssetVc;
 use turbo_binding::turbopack::node::{
@@ -222,9 +222,8 @@ pub async fn create_page_source(
     let injected_env = env_for_js(EnvMapVc::empty().into(), false, next_config);
     let env = CustomProcessEnvVc::new(env, next_config.env()).as_process_env();
 
-    let server_runtime_entries =
-        vec![ProcessEnvAssetVc::new(project_path, injected_env).as_ecmascript_chunk_placeable()];
-    let server_runtime_entries = EcmascriptChunkPlaceablesVc::cell(server_runtime_entries);
+    let server_runtime_entries = vec![ProcessEnvAssetVc::new(project_path, injected_env).into()];
+    let server_runtime_entries = EvaluatedEntriesVc::cell(server_runtime_entries);
 
     let fallback_page = get_fallback_page(
         project_path,
@@ -308,7 +307,7 @@ async fn create_page_source_for_file(
     pages_dir: FileSystemPathVc,
     specificity: SpecificityVc,
     page_asset: AssetVc,
-    runtime_entries: EcmascriptChunkPlaceablesVc,
+    runtime_entries: EvaluatedEntriesVc,
     fallback_page: DevHtmlAssetVc,
     server_root: FileSystemPathVc,
     server_path: FileSystemPathVc,
@@ -462,7 +461,7 @@ async fn create_not_found_page_source(
     client_context: AssetContextVc,
     pages_dir: FileSystemPathVc,
     page_extensions: StringsVc,
-    runtime_entries: EcmascriptChunkPlaceablesVc,
+    runtime_entries: EvaluatedEntriesVc,
     fallback_page: DevHtmlAssetVc,
     server_root: FileSystemPathVc,
     intermediate_output_path: FileSystemPathVc,
@@ -557,7 +556,7 @@ async fn create_page_source_for_directory(
     server_data_context: AssetContextVc,
     client_context: AssetContextVc,
     pages_dir: FileSystemPathVc,
-    runtime_entries: EcmascriptChunkPlaceablesVc,
+    runtime_entries: EvaluatedEntriesVc,
     fallback_page: DevHtmlAssetVc,
     server_root: FileSystemPathVc,
     output_root: FileSystemPathVc,
